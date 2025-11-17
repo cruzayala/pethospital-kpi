@@ -3,7 +3,7 @@ Pydantic schemas for API validation
 """
 from datetime import date, datetime
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TestCount(BaseModel):
@@ -41,8 +41,8 @@ class MetricsSubmission(BaseModel):
     species: List[SpeciesCount] = Field(default_factory=list)
     breeds: List[BreedCount] = Field(default_factory=list)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "center_code": "HVC",
                 "api_key": "your-api-key-here",
@@ -65,6 +65,7 @@ class MetricsSubmission(BaseModel):
                 ]
             }
         }
+    )
 
 
 class CenterResponse(BaseModel):
@@ -78,8 +79,7 @@ class CenterResponse(BaseModel):
     registered_at: datetime
     last_sync_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DailyMetricResponse(BaseModel):
@@ -93,8 +93,7 @@ class DailyMetricResponse(BaseModel):
     total_owners: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardStats(BaseModel):
