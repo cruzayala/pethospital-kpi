@@ -67,14 +67,6 @@ def submit_metrics(metrics: MetricsSubmission, db: Session = Depends(get_db)):
         db.add(daily_metric)
 
     # Delete existing test summaries for this date
-    db.execute(
-        select(TestSummary).where(
-            and_(
-                TestSummary.center_id == center.id,
-                TestSummary.date == metrics.date
-            )
-        )
-    ).scalars().all()
     db.query(TestSummary).filter(
         and_(
             TestSummary.center_id == center.id,

@@ -76,7 +76,7 @@ class CenterResponse(BaseModel):
     name: str
     country: Optional[str] = None
     city: Optional[str] = None
-    is_active: bool
+    is_active: int  # Database uses Integer (0/1) not Boolean
     registered_at: datetime
     last_sync_at: Optional[datetime] = None
 
