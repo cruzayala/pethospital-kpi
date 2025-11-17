@@ -1,6 +1,7 @@
 """
 Pydantic schemas for API validation
 """
+from __future__ import annotations
 from datetime import date, datetime
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, ConfigDict
@@ -37,9 +38,9 @@ class MetricsSubmission(BaseModel):
     total_results: int = Field(default=0, ge=0)
     total_pets: int = Field(default=0, ge=0)
     total_owners: int = Field(default=0, ge=0)
-    tests: List[TestCount] = Field(default_factory=list)
-    species: List[SpeciesCount] = Field(default_factory=list)
-    breeds: List[BreedCount] = Field(default_factory=list)
+    tests: List[TestCount] = []
+    species: List[SpeciesCount] = []
+    breeds: List[BreedCount] = []
 
     model_config = ConfigDict(
         json_schema_extra={
