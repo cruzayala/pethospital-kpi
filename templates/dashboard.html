@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetHospital KPI Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">PetHospital KPI Dashboard</h1>
+            <p class="text-gray-600">Period: {{ date_from }} to {{ date_to }} ({{ days }} days)</p>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm text-gray-500 mb-2">Total Centers</div>
+                <div class="text-3xl font-bold text-blue-600">{{ total_centers }}</div>
+                <div class="text-xs text-gray-400 mt-1">{{ active_centers }} active</div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm text-gray-500 mb-2">Total Orders</div>
+                <div class="text-3xl font-bold text-green-600">{{ total_orders }}</div>
+                <div class="text-xs text-gray-400 mt-1">Last {{ days }} days</div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm text-gray-500 mb-2">Total Results</div>
+                <div class="text-3xl font-bold text-purple-600">{{ total_results }}</div>
+                <div class="text-xs text-gray-400 mt-1">Processed</div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm text-gray-500 mb-2">Total Pets</div>
+                <div class="text-3xl font-bold text-orange-600">{{ total_pets }}</div>
+                <div class="text-xs text-gray-400 mt-1">Unique patients</div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="text-sm text-gray-500 mb-2">Avg Orders/Center</div>
+                <div class="text-3xl font-bold text-indigo-600">
+                    {% if total_centers > 0 %}
+                        {{ (total_orders / total_centers)|round|int }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </div>
+                <div class="text-xs text-gray-400 mt-1">Per center</div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Daily Trend Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">Daily Trend</h2>
+                <canvas id="dailyTrendChart"></canvas>
+            </div>
+
+            <!-- Centers Comparison Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">Centers Comparison</h2>
+                <canvas id="centersChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Additional Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Top Tests Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">Top 10 Tests</h2>
+                <canvas id="topTestsChart"></canvas>
+            </div>
+
+            <!-- Species Distribution Chart -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-bold mb-4">Species Distribution</h2>
+                <canvas id="speciesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Centers Table -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold mb-4">Centers Details</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Center</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Orders</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Results</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Pets</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Sync</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for stat in center_stats %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap font-medium">{{ stat.center.name }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ stat.center.code }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if stat.center.city %}{{ stat.center.city }}, {% endif %}
+                                {{ stat.center.country or '' }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">{{ stat.orders }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">{{ stat.results }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold">{{ stat.pets }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if stat.center.is_active %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    Inactive
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if stat.center.last_sync_at %}
+                                {{ stat.center.last_sync_at.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                Never
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-gray-500 text-sm">
+            <p>PetHospital KPI Service - Powered by FastAPI & Railway</p>
+            <p class="mt-1">
+                <a href="/docs" class="text-blue-600 hover:underline">API Documentation</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Daily Trend Chart
+        const dailyTrendCtx = document.getElementById('dailyTrendChart').getContext('2d');
+        new Chart(dailyTrendCtx, {
+            type: 'line',
+            data: {
+                labels: [
+                    {% for day in daily_trend %}
+                    "{{ day.date }}",
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Orders',
+                    data: [
+                        {% for day in daily_trend %}
+                        {{ day.orders }},
+                        {% endfor %}
+                    ],
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Results',
+                    data: [
+                        {% for day in daily_trend %}
+                        {{ day.results }},
+                        {% endfor %}
+                    ],
+                    borderColor: 'rgb(168, 85, 247)',
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+
+        // Centers Comparison Chart
+        const centersCtx = document.getElementById('centersChart').getContext('2d');
+        new Chart(centersCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for stat in center_stats %}
+                    "{{ stat.center.code }}",
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Orders',
+                    data: [
+                        {% for stat in center_stats %}
+                        {{ stat.orders }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(34, 197, 94, 0.7)'
+                }, {
+                    label: 'Results',
+                    data: [
+                        {% for stat in center_stats %}
+                        {{ stat.results }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: 'rgba(168, 85, 247, 0.7)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+
+        // Top Tests Chart
+        const topTestsCtx = document.getElementById('topTestsChart').getContext('2d');
+        new Chart(topTestsCtx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    {% for test in top_tests %}
+                    "{{ test.test_code }}",
+                    {% endfor %}
+                ],
+                datasets: [{
+                    label: 'Test Count',
+                    data: [
+                        {% for test in top_tests %}
+                        {{ test.total }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(34, 197, 94, 0.7)',
+                        'rgba(168, 85, 247, 0.7)',
+                        'rgba(251, 146, 60, 0.7)',
+                        'rgba(236, 72, 153, 0.7)',
+                        'rgba(14, 165, 233, 0.7)',
+                        'rgba(132, 204, 22, 0.7)',
+                        'rgba(251, 191, 36, 0.7)',
+                        'rgba(244, 63, 94, 0.7)',
+                        'rgba(99, 102, 241, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        // Species Distribution Chart
+        const speciesCtx = document.getElementById('speciesChart').getContext('2d');
+        new Chart(speciesCtx, {
+            type: 'pie',
+            data: {
+                labels: [
+                    {% for sp in species_dist %}
+                    "{{ sp.species_name }}",
+                    {% endfor %}
+                ],
+                datasets: [{
+                    data: [
+                        {% for sp in species_dist %}
+                        {{ sp.total }},
+                        {% endfor %}
+                    ],
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.7)',
+                        'rgba(34, 197, 94, 0.7)',
+                        'rgba(168, 85, 247, 0.7)',
+                        'rgba(251, 146, 60, 0.7)',
+                        'rgba(236, 72, 153, 0.7)',
+                        'rgba(14, 165, 233, 0.7)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
