@@ -18,7 +18,15 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 if not DATABASE_URL:
     DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/pethospital_kpi"
 
-engine = create_engine(DATABASE_URL)
+# Create engine with connection pool settings optimized for Railway
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,      # Verify connections before using
+    pool_size=5,             # Connections in pool
+    max_overflow=10,         # Extra connections allowed
+    pool_recycle=3600,       # Recycle connections every hour
+    echo=False               # Don't log SQL queries
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
