@@ -35,8 +35,8 @@ class ConfigService:
 
     def get_system_config(self, db: Session) -> Optional[SystemConfig]:
         """Get system configuration (single row)"""
-        # Use .first() as fallback to handle legacy duplicate rows
-        result = db.execute(select(SystemConfig).limit(1)).scalar_one_or_none()
+        # Use .first() to handle legacy duplicate rows gracefully
+        result = db.execute(select(SystemConfig).limit(1)).scalars().first()
         return result
 
     def update_system_config(self, db: Session, config_data: Dict[str, Any]) -> SystemConfig:

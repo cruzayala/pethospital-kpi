@@ -15,6 +15,7 @@ from sqlalchemy import select, func, and_, delete
 from loguru import logger
 
 from ..database import get_db
+from ..rate_limiter import limiter
 from ..models import (
     Center, DailyMetric, TestSummary, SpeciesSummary, BreedSummary,
     PerformanceMetric, ModuleMetric, SystemUsageMetric, PaymentMethodMetric
@@ -33,12 +34,8 @@ from ..config import settings
 router = APIRouter(prefix="/kpi", tags=["KPI"])
 
 
-def get_limiter(request: Request):
-    """Get rate limiter from app state"""
-    return request.app.state.limiter
-
-
 @router.post("/submit", status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.RATE_LIMIT_SUBMIT)
 async def submit_metrics(
     request: Request,
     metrics: MetricsSubmission,
@@ -52,14 +49,6 @@ async def submit_metrics(
 
     Rate limit: Configurable via RATE_LIMIT_SUBMIT env var (default: 100/day)
     """
-    # Apply rate limiting
-    try:
-        limiter = get_limiter(request)
-        await limiter.limit(settings.RATE_LIMIT_SUBMIT)(request)
-    except Exception:
-        # If rate limiting fails, continue anyway
-        pass
-
     # Get API key from header or body (backward compatibility)
     api_key = get_api_key_from_header_or_body(x_api_key, metrics.api_key)
 
@@ -186,6 +175,7 @@ async def submit_metrics(
 
 
 @router.post("/submit/enhanced", status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.RATE_LIMIT_SUBMIT)
 async def submit_enhanced_metrics(
     request: Request,
     metrics: EnhancedMetricsSubmission,
@@ -204,13 +194,6 @@ async def submit_enhanced_metrics(
     Authentication: X-API-Key header (recommended) or api_key in body (deprecated)
     Rate limit: Configurable via RATE_LIMIT_SUBMIT env var (default: 100/day)
     """
-    # Apply rate limiting
-    try:
-        limiter = get_limiter(request)
-        await limiter.limit(settings.RATE_LIMIT_SUBMIT)(request)
-    except Exception:
-        pass
-
     # Get API key from header or body (backward compatibility)
     api_key = get_api_key_from_header_or_body(x_api_key, metrics.api_key)
 
@@ -480,6 +463,7 @@ async def submit_enhanced_metrics(
 
 
 @router.post("/events", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(settings.RATE_LIMIT_EVENTS)
 async def submit_event(
     request: Request,
     event: EventSubmission,
@@ -494,14 +478,6 @@ async def submit_event(
 
     Rate limit: Configurable via RATE_LIMIT_EVENTS env var (default: 1000/day)
     """
-    # Apply rate limiting
-    try:
-        limiter = get_limiter(request)
-        await limiter.limit(settings.RATE_LIMIT_EVENTS)(request)
-    except Exception:
-        # If rate limiting fails, continue anyway
-        pass
-
     # Get API key from header or body
     api_key = get_api_key_from_header_or_body(x_api_key, event.api_key)
 

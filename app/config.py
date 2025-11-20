@@ -26,6 +26,10 @@ class Settings:
     # Security - CORS
     ALLOWED_ORIGINS_STR: str = os.getenv("ALLOWED_ORIGINS", "*")
 
+    # Dashboard Authentication (Basic Auth for HTML dashboard)
+    DASHBOARD_USERNAME: str = os.getenv("DASHBOARD_USERNAME", "admin")
+    DASHBOARD_PASSWORD: str = os.getenv("DASHBOARD_PASSWORD", "change-this-secure-password")
+
     @property
     def ALLOWED_ORIGINS(self) -> List[str]:
         """Parse allowed origins from comma-separated string"""
@@ -77,9 +81,19 @@ class Settings:
         if not self.DATABASE_URL:
             errors.append("DATABASE_URL is required")
 
-        # Warn about default dashboard credentials in production
+        # Dashboard credentials
+        if not self.DASHBOARD_USERNAME:
+            errors.append("DASHBOARD_USERNAME is required")
+        if not self.DASHBOARD_PASSWORD:
+            errors.append("DASHBOARD_PASSWORD is required")
+
+        # Warn about default JWT secret in production
+        if self.is_production and self.JWT_SECRET_KEY == "change-this-secret-key-in-production":
+            errors.append("JWT_SECRET_KEY must be changed in production")
         if self.is_production and self.DASHBOARD_PASSWORD == "change-this-secure-password":
             errors.append("DASHBOARD_PASSWORD must be changed in production")
+        if self.is_production and self.DASHBOARD_USERNAME == "admin":
+            errors.append("DASHBOARD_USERNAME should not be 'admin' in production")
 
         # Warn about open CORS in production
         if self.is_production and "*" in self.ALLOWED_ORIGINS:

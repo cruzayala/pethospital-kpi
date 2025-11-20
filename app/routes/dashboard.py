@@ -1,15 +1,16 @@
 """
 Dashboard routes with HTML rendering
 
-Version 3.0 - Protected with JWT Authentication:
-- Requires authentication
+Version 4.0 - Full Server-Side Authentication:
+- All protected routes require JWT authentication server-side
 - Rate limiting
 - Structured logging
-- Login page
+- Login page (public)
+- 401 error page
 """
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, and_
@@ -18,15 +19,11 @@ from loguru import logger
 from ..database import get_db
 from ..models import Center, DailyMetric, TestSummary, SpeciesSummary, User
 from ..config import settings
+from ..rate_limiter import limiter
 from ..auth import get_current_user
 
 router = APIRouter(tags=["Dashboard"])
 templates = Jinja2Templates(directory="templates")
-
-
-def get_limiter(request: Request):
-    """Get rate limiter from app state"""
-    return request.app.state.limiter
 
 
 @router.get("/login", response_class=HTMLResponse)
@@ -43,40 +40,37 @@ async def login_page(
 
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(
-    request: Request
+    request: Request,
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Settings page (protected via JavaScript)
+    Settings page - PROTECTED
 
-    **PUBLIC**: Authentication handled by JavaScript on client side
+    **PROTECTED**: Requires server-side authentication
+    Only authenticated users can access system settings
     """
-    logger.info("Settings page accessed")
+    logger.info(f"Settings page accessed by: {current_user.username}")
     return templates.TemplateResponse("settings.html", {
-        "request": request
+        "request": request,
+        "current_user": current_user
     })
 
 
 @router.get("/", response_class=HTMLResponse)
+@limiter.limit(settings.RATE_LIMIT_DASHBOARD)
 async def dashboard_home(
     request: Request,
     days: int = 30,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Main dashboard page with charts and stats
 
-    **PUBLIC**: Authentication handled by JavaScript on client side
+    **PROTECTED**: Requires server-side authentication
     Rate limit: Configurable via RATE_LIMIT_DASHBOARD env var (default: 60/minute)
     """
-    # Apply rate limiting
-    try:
-        limiter = get_limiter(request)
-        await limiter.limit(settings.RATE_LIMIT_DASHBOARD)(request)
-    except Exception:
-        # If rate limiting fails, continue anyway
-        pass
-
-    logger.info(f"Dashboard accessed - days: {days}")
+    logger.info(f"Dashboard accessed by {current_user.username} - days: {days}")
 
     since_date = date.today() - timedelta(days=days)
 
@@ -167,6 +161,6 @@ async def dashboard_home(
         "daily_trend": daily_trend,
         "top_tests": top_tests,
         "species_dist": species_dist,
-        "current_user": None  # User info will be loaded via JavaScript from localStorage
+        "current_user": current_user  # Now passing authenticated user from server
     })
 

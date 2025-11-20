@@ -16,8 +16,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from loguru import logger
 
@@ -27,10 +26,7 @@ from .routes import kpi, dashboard, analytics, auth_routes, admin, config
 from .exceptions import register_exception_handlers
 from .logging_config import setup_logging
 from .modules.cache_service import init_cache_service
-
-
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
+from .rate_limiter import limiter
 
 
 @asynccontextmanager

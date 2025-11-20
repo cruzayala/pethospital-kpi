@@ -83,12 +83,18 @@ class TestsAnalytics:
             growth = ((second_half - first_half) / first_half * 100) if first_half > 0 else 0
 
             tests_with_growth.append({
+                # Keep legacy keys for API consumers
                 "code": test.test_code,
                 "name": test.test_name or test.test_code,
-                "total_count": test.total_count,
                 "num_centers": test.num_centers,
+                "growth_rate_percent": round(growth, 2),
+                # Frontend-friendly keys used by dashboard JS
+                "test_code": test.test_code,
+                "test_name": test.test_name or test.test_code,
+                "total_count": test.total_count,
+                "centers_count": test.num_centers,
                 "avg_per_day": round(test.avg_per_day, 2),
-                "growth_rate_percent": round(growth, 2)
+                "growth_rate": round(growth, 2)
             })
 
         return {

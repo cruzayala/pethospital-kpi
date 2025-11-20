@@ -7,6 +7,8 @@ Provides comprehensive analytics endpoints using specialized modules:
 - Tests analytics
 - Species & breeds analytics
 - Performance analytics
+
+**SECURITY UPDATE**: All endpoints now require authentication
 """
 from typing import Optional
 from datetime import date, timedelta
@@ -16,6 +18,8 @@ from sqlalchemy.orm import Session
 from loguru import logger
 
 from ..database import get_db
+from ..models import User
+from ..auth import get_current_user, get_current_superuser
 from ..modules.centers_analytics import CentersAnalytics
 from ..modules.tests_analytics import TestsAnalytics
 from ..modules.species_analytics import SpeciesAnalytics
@@ -33,6 +37,7 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 def get_center_summary(
     center_code: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -46,7 +51,7 @@ def get_center_summary(
     - Module usage
     - System usage
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Center summary requested: {center_code}")
 
@@ -65,6 +70,7 @@ def get_center_summary(
 @router.get("/centers/comparison")
 def compare_centers(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -76,7 +82,7 @@ def compare_centers(
     - Performance comparisons
     - Activity levels
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info("Centers comparison requested")
 
@@ -88,6 +94,7 @@ def compare_centers(
 def get_center_trends(
     center_code: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -98,7 +105,7 @@ def get_center_trends(
     - Performance metrics
     - Module usage over time
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Center trends requested: {center_code}")
 
@@ -122,6 +129,7 @@ def get_center_trends(
 def get_top_tests_global(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     limit: int = Query(20, ge=1, le=100, description="Number of tests to return"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -133,7 +141,7 @@ def get_top_tests_global(
     - Growth trends
     - Center distribution
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Top tests global requested (limit={limit})")
 
@@ -145,6 +153,7 @@ def get_top_tests_global(
 def get_test_details(
     test_code: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -156,7 +165,7 @@ def get_test_details(
     - Distribution by center
     - Comparison metrics
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Test details requested: {test_code}")
 
@@ -176,6 +185,7 @@ def get_test_details(
 def get_center_tests(
     center_code: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -186,7 +196,7 @@ def get_center_tests(
     - Unique tests (not common in other centers)
     - Test diversity metrics
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Center tests requested: {center_code}")
 
@@ -205,6 +215,7 @@ def get_center_tests(
 @router.get("/tests/categories")
 def get_test_categories(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -216,7 +227,7 @@ def get_test_categories(
     - Liver Enzymes (ALT, AST, ALP, etc.)
     - Electrolytes, Lipids, Thyroid, etc.
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info("Test categories requested")
 
@@ -231,6 +242,7 @@ def get_test_categories(
 @router.get("/species/distribution")
 def get_species_distribution(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -241,7 +253,7 @@ def get_species_distribution(
     - Trend over time
     - Distribution by center
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info("Species distribution requested")
 
@@ -254,6 +266,7 @@ def get_top_breeds(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     limit: int = Query(20, ge=1, le=100, description="Number of breeds to return"),
     species: Optional[str] = Query(None, description="Filter by species"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -264,7 +277,7 @@ def get_top_breeds(
     - Species breakdown
     - Popularity trends
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Top breeds requested (species={species}, limit={limit})")
 
@@ -276,6 +289,7 @@ def get_top_breeds(
 def get_center_species_profile(
     center_code: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -286,7 +300,7 @@ def get_center_species_profile(
     - Most common breeds
     - Comparison with global patterns
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Center species profile requested: {center_code}")
 
@@ -306,6 +320,7 @@ def get_center_species_profile(
 def get_breed_details(
     breed_name: str,
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -316,7 +331,7 @@ def get_breed_details(
     - Geographic distribution
     - Trend over time
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Breed details requested: {breed_name}")
 
@@ -339,6 +354,7 @@ def get_breed_details(
 @router.get("/summary")
 def get_global_summary(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -350,7 +366,7 @@ def get_global_summary(
     - Species distribution
     - Top breeds
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     Useful for dashboard overview
     """
     logger.info("Global summary requested")
@@ -378,6 +394,7 @@ def get_global_summary(
 def export_centers_comparison(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     format: str = Query("csv", regex="^(csv|excel|pdf)$", description="Export format"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -388,7 +405,7 @@ def export_centers_comparison(
     - excel: Excel file with formatting
     - pdf: PDF report with tables and summary
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Export centers comparison requested: format={format}")
 
@@ -424,6 +441,7 @@ def export_top_tests(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     limit: int = Query(20, ge=1, le=100, description="Number of tests to export"),
     format: str = Query("csv", regex="^(csv|excel|pdf)$", description="Export format"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -434,7 +452,7 @@ def export_top_tests(
     - excel: Excel file with formatting
     - pdf: PDF report with tables and summary
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Export top tests requested: format={format}, limit={limit}")
 
@@ -474,6 +492,7 @@ def compare_centers_advanced(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     days: Optional[int] = Query(None, ge=1, le=365, description="Number of days (alternative to dates)"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -483,7 +502,7 @@ def compare_centers_advanced(
     - Specify start_date and end_date (YYYY-MM-DD format)
     - Specify days (will calculate from today backwards)
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Advanced centers comparison: start={start_date}, end={end_date}, days={days}")
 
@@ -513,6 +532,7 @@ def get_top_tests_advanced(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     days: Optional[int] = Query(None, ge=1, le=365, description="Number of days"),
     limit: int = Query(20, ge=1, le=100, description="Number of tests to return"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -522,7 +542,7 @@ def get_top_tests_advanced(
     - Specify start_date and end_date (YYYY-MM-DD format)
     - Specify days (will calculate from today backwards)
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires authentication
     """
     logger.info(f"Advanced top tests: start={start_date}, end={end_date}, days={days}")
 
@@ -551,14 +571,16 @@ def get_top_tests_advanced(
 # ============================================================================
 
 @router.get("/cache/stats")
-def get_cache_stats():
+def get_cache_stats(
+    current_user: User = Depends(get_current_superuser)
+):
     """
     Get cache statistics
 
     Returns hit rate, total keys, etc.
     Useful for monitoring cache performance
 
-    Public endpoint (no authentication required)
+    **PROTECTED**: Requires superuser authentication
     """
     logger.info("Cache stats requested")
 
@@ -574,7 +596,8 @@ def get_cache_stats():
 
 @router.post("/cache/clear")
 def clear_cache(
-    pattern: str = Query("analytics:*", description="Key pattern to clear")
+    pattern: str = Query("analytics:*", description="Key pattern to clear"),
+    current_user: User = Depends(get_current_superuser)
 ):
     """
     Clear cache keys matching pattern
@@ -584,8 +607,7 @@ def clear_cache(
     - analytics:centers:* - Only centers cache
     - analytics:tests:* - Only tests cache
 
-    Public endpoint (no authentication required)
-    Note: In production, this should require admin authentication
+    **PROTECTED**: Requires superuser authentication
     """
     logger.info(f"Cache clear requested: pattern={pattern}")
 
