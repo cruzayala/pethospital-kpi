@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetHospital KPI - Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .sidebar-active {
+            background-color: #3B82F6;
+            color: white;
+        }
+        .loading {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Main Container with Sidebar -->
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white flex-shrink-0">
+            <div class="p-6">
+                <h1 class="text-2xl font-bold mb-2">PetHospital KPI</h1>
+                <p class="text-xs text-gray-400">Analytics Dashboard v3.0</p>
+            </div>
+
+            <nav class="mt-6">
+                <!-- Overview -->
+                <a href="#" onclick="showModule('overview')" id="nav-overview"
+                   class="sidebar-item sidebar-active flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">📊</span>
+                    <span>Resumen General</span>
+                </a>
+
+                <!-- Centers -->
+                <div class="px-6 py-2 text-xs text-gray-500 uppercase font-semibold mt-4">
+                    Centros
+                </div>
+                <a href="#" onclick="showModule('centers-comparison')" id="nav-centers-comparison"
+                   class="sidebar-item flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">🏥</span>
+                    <span>Comparación de Centros</span>
+                </a>
+                <a href="#" onclick="showModule('center-detail')" id="nav-center-detail"
+                   class="sidebar-item flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">📈</span>
+                    <span>Detalle por Centro</span>
+                </a>
+
+                <!-- Tests -->
+                <div class="px-6 py-2 text-xs text-gray-500 uppercase font-semibold mt-4">
+                    Pruebas
+                </div>
+                <a href="#" onclick="showModule('tests-top')" id="nav-tests-top"
+                   class="sidebar-item flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">🧪</span>
+                    <span>Top Pruebas</span>
+                </a>
+                <a href="#" onclick="showModule('tests-categories')" id="nav-tests-categories"
+                   class="sidebar-item flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">📋</span>
+                    <span>Categorías</span>
+                </a>
+
+                <!-- Species -->
+                <div class="px-6 py-2 text-xs text-gray-500 uppercase font-semibold mt-4">
+                    Especies y Razas
+                </div>
+                <a href="#" onclick="showModule('species')" id="nav-species"
+                   class="sidebar-item flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">🐾</span>
+                    <span>Distribución de Especies</span>
+                </a>
+                <a href="#" onclick="showModule('breeds')" id="nav-breeds"
+                   class="sidebar-item flex items-center px-6 py-3 hover:bg-gray-700 transition">
+                    <span class="mr-3">🐕</span>
+                    <span>Top Razas</span>
+                </a>
+            </nav>
+
+            <!-- Footer -->
+            <div class="absolute bottom-0 w-64 p-6 text-xs text-gray-500">
+                <a href="/docs" target="_blank" class="hover:text-white">📚 API Docs</a><br>
+                <span>Período: últimos <span id="days-display">30</span> días</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-auto">
+            <!-- Top Bar -->
+            <div class="bg-white shadow px-6 py-4 flex justify-between items-center">
+                <div>
+                    <h2 id="module-title" class="text-2xl font-bold text-gray-800">Resumen General</h2>
+                    <p id="module-subtitle" class="text-sm text-gray-500">Vista general de todos los centros</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="days-selector" onchange="updateDays(this.value)"
+                            class="border rounded px-3 py-2 text-sm">
+                        <option value="7">Últimos 7 días</option>
+                        <option value="30" selected>Últimos 30 días</option>
+                        <option value="60">Últimos 60 días</option>
+                        <option value="90">Últimos 90 días</option>
+                    </select>
+                    <button onclick="refreshData()"
+                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition text-sm">
+                        🔄 Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="p-6">
+                <!-- Loading Indicator -->
+                <div id="loading" class="hidden flex justify-center items-center py-20">
+                    <div class="loading"></div>
+                </div>
+
+                <!-- Module Content -->
+                <div id="content">
+                    <!-- Content will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentModule = 'overview';
+        let currentDays = 30;
+
+        // Show module
+        function showModule(module) {
+            currentModule = module;
+
+            // Update sidebar active state
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('sidebar-active');
+            });
+            document.getElementById('nav-' + module)?.classList.add('sidebar-active');
+
+            // Load module content
+            loadModuleContent(module);
+        }
+
+        // Update days
+        function updateDays(days) {
+            currentDays = parseInt(days);
+            document.getElementById('days-display').textContent = days;
+            refreshData();
+        }
+
+        // Refresh data
+        function refreshData() {
+            loadModuleContent(currentModule);
+        }
+
+        // Load module content
+        async function loadModuleContent(module) {
+            const content = document.getElementById('content');
+            const loading = document.getElementById('loading');
+
+            loading.classList.remove('hidden');
+            content.innerHTML = '';
+
+            try {
+                switch(module) {
+                    case 'overview':
+                        await loadOverview();
+                        break;
+                    case 'centers-comparison':
+                        await loadCentersComparison();
+                        break;
+                    case 'center-detail':
+                        await loadCenterDetail();
+                        break;
+                    case 'tests-top':
+                        await loadTopTests();
+                        break;
+                    case 'tests-categories':
+                        await loadTestCategories();
+                        break;
+                    case 'species':
+                        await loadSpeciesDistribution();
+                        break;
+                    case 'breeds':
+                        await loadTopBreeds();
+                        break;
+                }
+            } catch (error) {
+                content.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Load Overview
+        async function loadOverview() {
+            document.getElementById('module-title').textContent = 'Resumen General';
+            document.getElementById('module-subtitle').textContent = 'Vista general de todos los centros';
+
+            const response = await axios.get(`/analytics/summary?days=${currentDays}`);
+            const data = response.data;
+
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="text-sm text-gray-500 mb-2">Total Centros</div>
+                        <div class="text-4xl font-bold text-blue-600">${data.centers.total_centers}</div>
+                        <div class="text-xs text-gray-400 mt-1">${data.centers.active_centers} activos</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="text-sm text-gray-500 mb-2">Total Órdenes</div>
+                        <div class="text-4xl font-bold text-green-600">${data.centers.aggregates.total_orders.toLocaleString()}</div>
+                        <div class="text-xs text-gray-400 mt-1">Últimos ${currentDays} días</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="text-sm text-gray-500 mb-2">Total Resultados</div>
+                        <div class="text-4xl font-bold text-purple-600">${data.centers.aggregates.total_results.toLocaleString()}</div>
+                        <div class="text-xs text-gray-400 mt-1">Procesados</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="text-sm text-gray-500 mb-2">Total Mascotas</div>
+                        <div class="text-4xl font-bold text-orange-600">${data.centers.aggregates.total_pets.toLocaleString()}</div>
+                        <div class="text-xs text-gray-400 mt-1">Pacientes únicos</div>
+                    </div>
+                </div>
+
+                <!-- Top Centers -->
+                <div class="bg-white rounded-lg shadow mb-8">
+                    <div class="p-6 border-b">
+                        <h3 class="text-xl font-bold">Top Centros por Órdenes</h3>
+                    </div>
+                    <div class="p-6">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-gray-600 text-sm">
+                                    <th class="pb-3">Rank</th>
+                                    <th class="pb-3">Centro</th>
+                                    <th class="pb-3">Ciudad</th>
+                                    <th class="pb-3 text-right">Órdenes</th>
+                                    <th class="pb-3 text-right">Promedio Diario</th>
+                                    <th class="pb-3 text-right">Crecimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.centers.centers.slice(0, 5).map(center => `
+                                    <tr class="border-t">
+                                        <td class="py-3">
+                                            <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-bold">
+                                                ${center.rank}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 font-semibold">${center.center_name}</td>
+                                        <td class="py-3 text-gray-600">${center.city || 'N/A'}</td>
+                                        <td class="py-3 text-right font-semibold">${center.metrics.total_orders.toLocaleString()}</td>
+                                        <td class="py-3 text-right">${center.metrics.avg_daily_orders.toFixed(1)}</td>
+                                        <td class="py-3 text-right">
+                                            <span class="${center.growth_rate_percent >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                                ${center.growth_rate_percent >= 0 ? '↑' : '↓'} ${Math.abs(center.growth_rate_percent).toFixed(1)}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Top Tests and Species -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Top Tests -->
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="p-6 border-b">
+                            <h3 class="text-xl font-bold">Top 5 Pruebas</h3>
+                        </div>
+                        <div class="p-6">
+                            <canvas id="topTestsChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Species Distribution -->
+                    <div class="bg-white rounded-lg shadow">
+                        <div class="p-6 border-b">
+                            <h3 class="text-xl font-bold">Distribución de Especies</h3>
+                        </div>
+                        <div class="p-6">
+                            <canvas id="speciesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Create charts
+            createTopTestsChart(data.top_tests.tests.slice(0, 5));
+            createSpeciesChart(data.species.species);
+        }
+
+        // Create Top Tests Chart
+        function createTopTestsChart(tests) {
+            const ctx = document.getElementById('topTestsChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: tests.map(t => t.code),
+                    datasets: [{
+                        label: 'Solicitudes',
+                        data: tests.map(t => t.total_count),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Create Species Chart
+        function createSpeciesChart(species) {
+            const ctx = document.getElementById('speciesChart');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: species.map(s => s.name),
+                    datasets: [{
+                        data: species.map(s => s.total_count),
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)',
+                            'rgba(139, 92, 246, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+        // Load Centers Comparison (simplified placeholder)
+        async function loadCentersComparison() {
+            document.getElementById('module-title').textContent = 'Comparación de Centros';
+            document.getElementById('module-subtitle').textContent = 'Rankings y benchmarks entre centros';
+
+            const response = await axios.get(`/analytics/centers/comparison?days=${currentDays}`);
+            const data = response.data;
+
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-xl font-bold mb-4">Todos los Centros</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-gray-600 text-sm border-b">
+                                    <th class="pb-3">Rank</th>
+                                    <th class="pb-3">Centro</th>
+                                    <th class="pb-3">Ciudad</th>
+                                    <th class="pb-3 text-right">Órdenes</th>
+                                    <th class="pb-3 text-right">Resultados</th>
+                                    <th class="pb-3 text-right">Mascotas</th>
+                                    <th class="pb-3 text-right">Días Activos</th>
+                                    <th class="pb-3 text-right">Crecimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.centers.map(center => `
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="py-4">
+                                            <span class="inline-block w-8 h-8 rounded-full ${center.rank <= 3 ? 'bg-yellow-500' : 'bg-gray-400'} text-white text-center leading-8 font-bold">
+                                                ${center.rank}
+                                            </span>
+                                        </td>
+                                        <td class="py-4">
+                                            <div>
+                                                <div class="font-semibold">${center.center_name}</div>
+                                                <div class="text-xs text-gray-500">${center.center_code}</div>
+                                            </div>
+                                        </td>
+                                        <td class="py-4">${center.city || 'N/A'}</td>
+                                        <td class="py-4 text-right font-semibold">${center.metrics.total_orders.toLocaleString()}</td>
+                                        <td class="py-4 text-right">${center.metrics.total_results.toLocaleString()}</td>
+                                        <td class="py-4 text-right">${center.metrics.total_pets.toLocaleString()}</td>
+                                        <td class="py-4 text-right">${center.metrics.active_days}</td>
+                                        <td class="py-4 text-right">
+                                            <span class="${center.growth_rate_percent >= 0 ? 'text-green-600' : 'text-red-600'} font-semibold">
+                                                ${center.growth_rate_percent >= 0 ? '↑' : '↓'} ${Math.abs(center.growth_rate_percent).toFixed(1)}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Add similar functions for other modules...
+        // (These would be implemented similarly)
+
+        async function loadCenterDetail() {
+            document.getElementById('content').innerHTML = `
+                <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                    Módulo en desarrollo. Usa /analytics/centers/summary/HVC para ver detalles de un centro.
+                </div>
+            `;
+        }
+
+        async function loadTopTests() {
+            document.getElementById('module-title').textContent = 'Top Pruebas';
+            document.getElementById('module-subtitle').textContent = 'Pruebas más solicitadas';
+
+            const response = await axios.get(`/analytics/tests/top-global?days=${currentDays}&limit=20`);
+            const data = response.data;
+
+            const content = document.getElementById('content');
+            content.innerHTML = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="text-left text-gray-600 text-sm border-b">
+                                    <th class="pb-3">Código</th>
+                                    <th class="pb-3">Nombre</th>
+                                    <th class="pb-3 text-right">Total Solicitudes</th>
+                                    <th class="pb-3 text-right">Centros</th>
+                                    <th class="pb-3 text-right">Promedio/Día</th>
+                                    <th class="pb-3 text-right">Crecimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.tests.map((test, i) => `
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="py-3 font-mono font-bold">${test.code}</td>
+                                        <td class="py-3">${test.name}</td>
+                                        <td class="py-3 text-right font-semibold">${test.total_count.toLocaleString()}</td>
+                                        <td class="py-3 text-right">${test.num_centers}</td>
+                                        <td class="py-3 text-right">${test.avg_per_day.toFixed(1)}</td>
+                                        <td class="py-3 text-right">
+                                            <span class="${test.growth_rate_percent >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                                ${test.growth_rate_percent >= 0 ? '↑' : '↓'} ${Math.abs(test.growth_rate_percent).toFixed(1)}%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadTestCategories() {
+            const response = await axios.get(`/analytics/tests/categories?days=${currentDays}`);
+            const data = response.data;
+
+            document.getElementById('content').innerHTML = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-xl font-bold mb-4">Categorías de Pruebas</h3>
+                    <canvas id="categoriesChart"></canvas>
+                </div>
+            `;
+
+            const ctx = document.getElementById('categoriesChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.categories.map(c => c.name.replace('_', ' ')),
+                    datasets: [{
+                        label: 'Solicitudes',
+                        data: data.categories.map(c => c.total_requests),
+                        backgroundColor: 'rgba(139, 92, 246, 0.8)'
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+        async function loadSpeciesDistribution() {
+            document.getElementById('module-title').textContent = 'Distribución de Especies';
+            const response = await axios.get(`/analytics/species/distribution?days=${currentDays}`);
+            const data = response.data;
+
+            document.getElementById('content').innerHTML = `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-xl font-bold mb-4">Por Especie</h3>
+                        <canvas id="speciesChartMain"></canvas>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-xl font-bold mb-4">Detalles</h3>
+                        <div class="space-y-4">
+                            ${data.species.map(s => `
+                                <div class="flex justify-between items-center border-b pb-2">
+                                    <span class="font-semibold">${s.name}</span>
+                                    <div class="text-right">
+                                        <div class="font-bold">${s.total_count.toLocaleString()}</div>
+                                        <div class="text-sm text-gray-500">${s.percentage.toFixed(1)}%</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const ctx = document.getElementById('speciesChartMain');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.species.map(s => s.name),
+                    datasets: [{
+                        data: data.species.map(s => s.total_count),
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(16, 185, 129, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)'
+                        ]
+                    }]
+                }
+            });
+        }
+
+        async function loadTopBreeds() {
+            document.getElementById('module-title').textContent = 'Top Razas';
+            const response = await axios.get(`/analytics/breeds/top?days=${currentDays}&limit=20`);
+            const data = response.data;
+
+            document.getElementById('content').innerHTML = `
+                <div class="bg-white rounded-lg shadow p-6">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="text-left text-gray-600 text-sm border-b">
+                                <th class="pb-3">Raza</th>
+                                <th class="pb-3">Especie</th>
+                                <th class="pb-3 text-right">Total</th>
+                                <th class="pb-3 text-right">Centros</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.breeds.map(b => `
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="py-3 font-semibold">${b.breed}</td>
+                                    <td class="py-3">${b.species}</td>
+                                    <td class="py-3 text-right font-semibold">${b.total_count.toLocaleString()}</td>
+                                    <td class="py-3 text-right">${b.num_centers}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Initialize dashboard
+        window.addEventListener('DOMContentLoaded', function() {
+            loadOverview();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr :8000)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(findstr:*)",
+      "Bash(nul)",
+      "Bash(timeout /t 3)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
