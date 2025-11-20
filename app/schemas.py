@@ -45,7 +45,7 @@ class MetricsSubmission(BaseModel):
     breeds: List[BreedCount] = []
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "center_code": "HVC",
                 "date": "2025-11-13",
@@ -81,7 +81,7 @@ class CenterResponse(BaseModel):
     last_sync_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DailyMetricResponse(BaseModel):
@@ -96,7 +96,7 @@ class DailyMetricResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DashboardStats(BaseModel):
@@ -136,7 +136,7 @@ class EventSubmission(BaseModel):
     data: EventData
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "center_code": "HVC",
                 "event_type": "order_created",
@@ -166,7 +166,7 @@ class CenterMetadataUpdate(BaseModel):
     is_active: Optional[bool] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Hospital Veterinario Central",
                 "city": "Santo Domingo",
@@ -246,7 +246,7 @@ class EnhancedMetricsSubmission(BaseModel):
     payment_methods: List[PaymentMethodData] = []
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "center_code": "HVC",
                 "date": "2025-11-19",

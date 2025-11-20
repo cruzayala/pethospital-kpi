@@ -59,7 +59,7 @@ class UserInDB(UserBase):
     last_login_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserResponse(UserInDB):
@@ -90,7 +90,7 @@ class RoleInDB(RoleBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class RoleResponse(RoleInDB):
@@ -117,7 +117,7 @@ class PermissionInDB(PermissionBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PermissionResponse(PermissionInDB):
